@@ -3,12 +3,16 @@
 """
 import os
 from typing import List, Dict, Any, Optional
-from langchain.schema import Document
-from langchain.llms import OpenAI
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import PromptTemplate
+from langchain_core.documents import Document
+from langchain_openai import OpenAI
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import PromptTemplate
 from langchain.chains import LLMChain
-from langchain.schema import HumanMessage, SystemMessage
+
+
+from langchain_core.messages import HumanMessage
+
+from langchain_core.messages import SystemMessage
 from dotenv import load_dotenv
 
 # 加载环境变量
@@ -26,19 +30,19 @@ class RAGGenerator:
         """
         self.model_name = model_name
         self.temperature = temperature
-        
+
         # 初始化LLM
         self.llm = self._initialize_llm()
-        
+
         # 定义提示模板
         self.prompt_templates = self._create_prompt_templates()
-    
+
     def _initialize_llm(self):
         """初始化LLM模型"""
         api_key = os.environ.get("DEEPSEEK_API_KEY")
         if not api_key:
             raise ValueError("请设置DEEPSEEK_API_KEY环境变量")
-        
+
         if "deepseek" in self.model_name.lower():
             return ChatOpenAI(
                 model=self.model_name,
@@ -52,7 +56,7 @@ class RAGGenerator:
                 temperature=self.temperature,
                 openai_api_key=api_key
             )
-    
+
     def _create_prompt_templates(self) -> Dict[str, PromptTemplate]:
         """创建提示模板"""
         templates = {
@@ -67,7 +71,7 @@ class RAGGenerator:
 
 答案："""
             ),
-            
+
             "summarize": PromptTemplate(
                 input_variables=["context", "query"],
                 template="""请基于以下上下文信息，针对查询"{query}"进行总结：
@@ -77,7 +81,7 @@ class RAGGenerator:
 
 总结："""
             ),
-            
+
             "conversation": PromptTemplate(
                 input_variables=["context", "question", "chat_history"],
                 template="""你是一个智能助手，请基于提供的上下文信息回答问题。保持对话的自然流畅。
@@ -92,7 +96,7 @@ class RAGGenerator:
 
 助手回答："""
             ),
-            
+
             "analysis": PromptTemplate(
                 input_variables=["context", "query"],
                 template="""请分析以下上下文信息，并针对查询"{query}"提供详细分析：
@@ -104,7 +108,7 @@ class RAGGenerator:
             )
         }
         return templates
-    
+
     def generate_answer(self, question: str, context_documents: List[Document], 
                        template_type: str = "qa", max_context_length: int = 4000) -> Dict[str, Any]:
         """
@@ -121,16 +125,16 @@ class RAGGenerator:
         """
         # 准备上下文
         context = self._prepare_context(context_documents, max_context_length)
-        
+
         # 选择提示模板
         if template_type not in self.prompt_templates:
             template_type = "qa"
-        
+
         prompt_template = self.prompt_templates[template_type]
-        
+
         # 创建LLM链
         llm_chain = LLMChain(llm=self.llm, prompt=prompt_template)
-        
+
         # 生成答案
         try:
             if template_type == "conversation":
@@ -145,7 +149,7 @@ class RAGGenerator:
                     context=context,
                     question=question
                 )
-            
+
             return {
                 "answer": response,
                 "question": question,
@@ -164,7 +168,7 @@ class RAGGenerator:
                 "success": False,
                 "error": str(e)
             }
-    
+
     def generate_with_retrieval(self, question: str, retriever, k: int = 5, 
                                template_type: str = "qa") -> Dict[str, Any]:
         """
@@ -181,15 +185,15 @@ class RAGGenerator:
         """
         # 检索相关文档
         retrieval_results = retriever.retrieve_documents(question, k=k)
-        
+
         # 提取文档
         context_documents = [result['document'] for result in retrieval_results['retrieved_documents']]
-        
+
         # 生成答案
         generation_result = self.generate_answer(
             question, context_documents, template_type
         )
-        
+
         # 合并结果
         return {
             "question": question,
@@ -198,7 +202,7 @@ class RAGGenerator:
             "generation_result": generation_result,
             "success": generation_result["success"]
         }
-    
+
     def _prepare_context(self, documents: List[Document], max_length: int) -> str:
         """
         准备上下文文本
@@ -212,18 +216,18 @@ class RAGGenerator:
         """
         context_parts = []
         current_length = 0
-        
+
         for i, doc in enumerate(documents):
             doc_text = f"文档 {i+1}:\n{doc.page_content}\n\n"
-            
+
             if current_length + len(doc_text) > max_length:
                 break
-            
+
             context_parts.append(doc_text)
             current_length += len(doc_text)
-        
+
         return "".join(context_parts)
-    
+
     def generate_summary(self, documents: List[Document], query: str = "请总结主要内容") -> Dict[str, Any]:
         """
         生成文档总结
@@ -236,11 +240,11 @@ class RAGGenerator:
             总结结果
         """
         context = self._prepare_context(documents, 6000)  # 总结可以使用更多上下文
-        
+
         try:
             llm_chain = LLMChain(llm=self.llm, prompt=self.prompt_templates["summarize"])
             summary = llm_chain.run(context=context, query=query)
-            
+
             return {
                 "summary": summary,
                 "query": query,
@@ -255,7 +259,7 @@ class RAGGenerator:
                 "success": False,
                 "error": str(e)
             }
-    
+
     def generate_analysis(self, documents: List[Document], query: str) -> Dict[str, Any]:
         """
         生成分析报告
@@ -268,11 +272,11 @@ class RAGGenerator:
             分析结果
         """
         context = self._prepare_context(documents, 6000)
-        
+
         try:
             llm_chain = LLMChain(llm=self.llm, prompt=self.prompt_templates["analysis"])
             analysis = llm_chain.run(context=context, query=query)
-            
+
             return {
                 "analysis": analysis,
                 "query": query,
@@ -287,7 +291,7 @@ class RAGGenerator:
                 "success": False,
                 "error": str(e)
             }
-    
+
     def get_model_info(self) -> Dict[str, Any]:
         """
         获取模型信息

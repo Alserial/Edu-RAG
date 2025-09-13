@@ -6,7 +6,7 @@ import pickle
 import numpy as np
 import faiss
 from typing import List, Dict, Any, Tuple
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 
 class VectorStore:
@@ -24,7 +24,7 @@ class VectorStore:
         self.documents = []
         self.metadata = []
         self.is_trained = False
-        
+
     def create_index(self, embeddings: np.ndarray) -> None:
         """
         创建FAISS索引
@@ -44,10 +44,10 @@ class VectorStore:
             self.is_trained = True
         else:
             raise ValueError(f"不支持的索引类型: {self.index_type}")
-        
+
         # 添加向量到索引
         self.index.add(embeddings.astype('float32'))
-    
+
     def add_documents(self, documents: List[Document], embeddings: np.ndarray, metadata: List[Dict] = None) -> None:
         """
         添加文档到向量存储
@@ -62,7 +62,7 @@ class VectorStore:
         else:
             # 如果索引已存在，添加新向量
             self.index.add(embeddings.astype('float32'))
-        
+
         # 存储文档和元数据
         self.documents.extend(documents)
         if metadata:
@@ -75,7 +75,7 @@ class VectorStore:
                     'source': doc.metadata.get('source', 'unknown'),
                     'page': doc.metadata.get('page', 0)
                 })
-    
+
     def search(self, query_embedding: np.ndarray, k: int = 5) -> Tuple[List[Document], List[float], List[Dict]]:
         """
         搜索相似文档
@@ -89,21 +89,21 @@ class VectorStore:
         """
         if self.index is None:
             raise ValueError("索引未初始化，请先添加文档")
-        
+
         # 确保查询向量是正确的形状
         if query_embedding.ndim == 1:
             query_embedding = query_embedding.reshape(1, -1)
-        
+
         # 搜索最相似的向量
         scores, indices = self.index.search(query_embedding.astype('float32'), k)
-        
+
         # 获取对应的文档和元数据
         retrieved_docs = [self.documents[i] for i in indices[0] if i < len(self.documents)]
         retrieved_scores = scores[0].tolist()
         retrieved_metadata = [self.metadata[i] for i in indices[0] if i < len(self.metadata)]
-        
+
         return retrieved_docs, retrieved_scores, retrieved_metadata
-    
+
     def save_index(self, filepath: str) -> None:
         """
         保存索引到文件
@@ -113,13 +113,13 @@ class VectorStore:
         """
         if self.index is None:
             raise ValueError("没有索引可保存")
-        
+
         # 创建保存目录
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        
+
         # 保存FAISS索引
         faiss.write_index(self.index, f"{filepath}.faiss")
-        
+
         # 保存文档和元数据
         with open(f"{filepath}.pkl", "wb") as f:
             pickle.dump({
@@ -129,7 +129,7 @@ class VectorStore:
                 'index_type': self.index_type,
                 'is_trained': self.is_trained
             }, f)
-    
+
     def load_index(self, filepath: str) -> None:
         """
         从文件加载索引
@@ -139,7 +139,7 @@ class VectorStore:
         """
         # 加载FAISS索引
         self.index = faiss.read_index(f"{filepath}.faiss")
-        
+
         # 加载文档和元数据
         with open(f"{filepath}.pkl", "rb") as f:
             data = pickle.load(f)
@@ -148,7 +148,7 @@ class VectorStore:
             self.dimension = data['dimension']
             self.index_type = data['index_type']
             self.is_trained = data['is_trained']
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """
         获取向量存储统计信息
@@ -163,7 +163,7 @@ class VectorStore:
                 'dimension': self.dimension,
                 'is_trained': False
             }
-        
+
         return {
             'total_documents': len(self.documents),
             'index_type': self.index_type,
@@ -171,7 +171,7 @@ class VectorStore:
             'is_trained': self.is_trained,
             'index_size': self.index.ntotal if hasattr(self.index, 'ntotal') else 0
         }
-    
+
     def clear(self) -> None:
         """
         清空向量存储
