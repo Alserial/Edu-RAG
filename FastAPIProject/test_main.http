@@ -1,0 +1,83 @@
+# RAG系统API测试
+
+# 1. 根路径测试
+GET http://127.0.0.1:8000/
+Accept: application/json
+
+###
+
+# 2. 健康检查
+GET http://127.0.0.1:8000/health
+Accept: application/json
+
+###
+
+# 3. 系统信息
+GET http://127.0.0.1:8000/info
+Accept: application/json
+
+###
+
+# 4. 上传文档
+POST http://127.0.0.1:8000/upload
+Content-Type: application/json
+
+{
+  "file_paths": [
+    "sample_documents/sample1.txt",
+    "sample_documents/sample2.txt",
+    "sample_documents/sample3.txt"
+  ]
+}
+
+###
+
+# 5. 查询文档
+POST http://127.0.0.1:8000/query
+Content-Type: application/json
+
+{
+  "question": "什么是人工智能？",
+  "k": 5,
+  "template_type": "qa"
+}
+
+###
+
+# 6. 总结文档
+POST http://127.0.0.1:8000/summary
+Content-Type: application/json
+
+{
+  "query": "请总结人工智能技术的发展历程"
+}
+
+###
+
+# 7. 分析文档
+POST http://127.0.0.1:8000/analysis
+Content-Type: application/json
+
+{
+  "query": "分析深度学习的优势和挑战"
+}
+
+###
+
+# 8. 保存系统
+POST http://127.0.0.1:8000/save
+Content-Type: application/json
+
+###
+
+# 9. 加载系统
+POST http://127.0.0.1:8000/load
+Content-Type: application/json
+
+###
+
+# 10. 清空系统
+POST http://127.0.0.1:8000/clear
+Content-Type: application/json
+
+###
