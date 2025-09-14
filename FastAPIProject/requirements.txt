@@ -15,3 +15,8 @@ sentence-transformers
 tiktoken
 huggingface-hub
 transformers
+# OCR相关依赖
+pytesseract
+Pillow
+PyMuPDF
+unstructured

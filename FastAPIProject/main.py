@@ -43,7 +43,8 @@ async def root():
         "status": "running",
         "endpoints": {
             "query": "/query - 查询文档",
-            "upload": "/upload - 上传文档",
+            "upload": "/upload - 上传文档（文件路径）",
+            "upload-files": "/upload-files - 上传文档（文件内容）",
             "summary": "/summary - 总结文档",
             "analysis": "/analysis - 分析文档",
             "info": "/info - 系统信息",
@@ -67,10 +68,10 @@ async def query_documents(request: QueryRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# 上传文档接口
+# 上传文档接口 - 支持文件路径和文件上传两种方式
 @app.post("/upload")
 async def upload_documents(request: DocumentUploadRequest):
-    """上传文档到RAG系统"""
+    """上传文档到RAG系统（通过文件路径）"""
     try:
         # 检查文件是否存在
         for file_path in request.file_paths:
@@ -80,6 +81,49 @@ async def upload_documents(request: DocumentUploadRequest):
         result = rag_system.add_documents(request.file_paths)
         return result
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 文件上传接口 - 支持直接上传文件
+@app.post("/upload-files")
+async def upload_files(files: List[UploadFile] = File(...)):
+    """直接上传文件到RAG系统"""
+    try:
+        import tempfile
+        import shutil
+        
+        temp_files = []
+        file_paths = []
+        
+        for file in files:
+            # 创建临时文件
+            suffix = os.path.splitext(file.filename)[1] if file.filename else '.txt'
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+            temp_files.append(temp_file.name)
+            file_paths.append(temp_file.name)
+            
+            # 写入文件内容
+            content = await file.read()
+            temp_file.write(content)
+            temp_file.close()
+        
+        # 处理文档
+        result = rag_system.add_documents(file_paths)
+        
+        # 清理临时文件
+        for temp_file in temp_files:
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
+        
+        return result
+    except Exception as e:
+        # 清理临时文件
+        for temp_file in temp_files:
+            try:
+                os.unlink(temp_file)
+            except:
+                pass
         raise HTTPException(status_code=500, detail=str(e))
 
 # 总结接口

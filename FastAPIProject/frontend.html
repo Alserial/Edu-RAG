@@ -294,12 +294,20 @@
                         <label>选择文档文件:</label>
                         <div class="file-upload" id="fileUpload">
                             <p>点击选择文件或拖拽文件到此处</p>
-                            <input type="file" id="fileInput" multiple accept=".txt,.pdf,.doc,.docx" style="display: none;">
+                            <p style="font-size: 12px; color: #666; margin-top: 5px;">
+                                支持格式: .txt, .pdf, .png, .jpg, .jpeg, .gif, .bmp, .tiff
+                            </p>
+                            <input type="file" id="fileInput" multiple accept=".txt,.pdf,.png,.jpg,.jpeg,.gif,.bmp,.tiff" style="display: none;">
                         </div>
                         <div class="file-list" id="fileList"></div>
                     </div>
-                    <button class="btn" onclick="uploadDocuments()">上传文档</button>
+                    <button class="btn" onclick="uploadDocuments()" id="uploadBtn">上传文档</button>
                     <button class="btn btn-secondary" onclick="loadSampleDocuments()">加载示例文档</button>
+                    
+                    <div class="loading" id="uploadLoading" style="display: none;">
+                        <div class="spinner"></div>
+                        正在上传和处理文件...
+                    </div>
                 </div>
 
                 <div id="systemTab" class="tab-content">
@@ -441,22 +449,47 @@
                 return;
             }
 
+            // 显示加载状态
+            document.getElementById('uploadBtn').disabled = true;
+            document.getElementById('uploadLoading').style.display = 'block';
+            document.getElementById('uploadResult').textContent = '';
+
             const formData = new FormData();
             selectedFiles.forEach(file => {
                 formData.append('files', file);
             });
 
             try {
-                const response = await fetch(`${API_BASE}/upload`, {
+                const response = await fetch(`${API_BASE}/upload-files`, {
                     method: 'POST',
                     body: formData
                 });
 
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+                }
+
                 const result = await response.json();
                 document.getElementById('uploadResult').textContent = JSON.stringify(result, null, 2);
                 checkConnection(); // 更新状态
+                
+                // 清空已选择的文件
+                selectedFiles = [];
+                updateFileList();
+                
+                // 显示成功消息
+                if (result.success) {
+                    alert(`上传成功！添加了 ${result.documents_added} 个文档，创建了 ${result.chunks_created} 个文档块。`);
+                }
             } catch (error) {
+                console.error('上传错误:', error);
                 document.getElementById('uploadResult').textContent = `错误: ${error.message}`;
+                alert(`上传失败: ${error.message}`);
+            } finally {
+                // 隐藏加载状态
+                document.getElementById('uploadBtn').disabled = false;
+                document.getElementById('uploadLoading').style.display = 'none';
             }
         }
 
