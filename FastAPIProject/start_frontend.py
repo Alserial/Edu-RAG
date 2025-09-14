@@ -9,8 +9,24 @@ import sys
 import os
 from pathlib import Path
 
+def check_backend_running():
+    """检查后端服务是否已经运行"""
+    try:
+        import requests
+        response = requests.get("http://127.0.0.1:8000/health", timeout=2)
+        if response.status_code == 200:
+            return True
+    except:
+        pass
+    return False
+
 def start_backend():
     """启动后端服务"""
+    # 首先检查后端是否已经运行
+    if check_backend_running():
+        print("✅ 检测到后端服务已在运行: http://127.0.0.1:8000")
+        return True
+    
     print("🚀 启动RAG系统后端服务...")
     try:
         # 启动FastAPI服务器
@@ -35,9 +51,12 @@ def start_frontend():
         frontend_path = Path(__file__).parent / "frontend.html"
         frontend_url = f"file://{frontend_path.absolute()}"
         
-        # 等待后端启动
-        print("⏳ 等待后端服务启动...")
-        time.sleep(3)
+        # 检查后端是否已经运行，如果已运行则不需要等待
+        if not check_backend_running():
+            print("⏳ 等待后端服务启动...")
+            time.sleep(3)
+        else:
+            print("✅ 后端服务已就绪，直接打开前端界面")
         
         # 打开浏览器
         webbrowser.open(frontend_url)
