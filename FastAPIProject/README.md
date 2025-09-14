@@ -11,6 +11,7 @@
 - 🌐 **现代化前端**: 美观的Web界面，支持拖拽上传
 - 🌐 **RESTful API**: 完整的FastAPI接口
 - 💾 **持久化存储**: 支持向量索引的保存和加载
+- 🗄️ **数据库管理**: 完整的数据库备份、恢复、监控和健康检查
 - 🔧 **灵活配置**: 可自定义分块大小、模型等参数
 
 ## 系统架构
@@ -239,6 +240,56 @@ curl -X POST "http://127.0.0.1:8000/analysis" \
      }'
 ```
 
+### 数据库管理API
+
+#### 1. 数据库统计
+
+```bash
+curl -X GET "http://127.0.0.1:8000/db/stats"
+```
+
+#### 2. 健康检查
+
+```bash
+curl -X GET "http://127.0.0.1:8000/db/health"
+```
+
+#### 3. 创建备份
+
+```bash
+curl -X POST "http://127.0.0.1:8000/db/backup" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "name": "backup_name"
+     }'
+```
+
+#### 4. 恢复备份
+
+```bash
+curl -X POST "http://127.0.0.1:8000/db/restore" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "backup_name": "backup_name"
+     }'
+```
+
+#### 5. 列出备份
+
+```bash
+curl -X GET "http://127.0.0.1:8000/db/backups"
+```
+
+#### 6. 清理旧备份
+
+```bash
+curl -X POST "http://127.0.0.1:8000/db/cleanup" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "keep_count": 5
+     }'
+```
+
 ## 🧪 测试
 
 ### 运行测试脚本
@@ -249,6 +300,9 @@ python test_rag.py
 
 # 文件上传测试
 python test_upload.py
+
+# 数据库管理测试
+python test_db_management.py
 
 # 完整系统测试
 python test.py
@@ -298,20 +352,28 @@ FastAPIProject/
 ├── vector_store.py           # 向量存储模块
 ├── retriever.py              # 检索模块
 ├── generator.py              # 生成模块
+├── database_manager.py       # 数据库管理模块
 ├── frontend.html             # 前端界面
+├── db_admin.html             # 数据库管理界面
 ├── start_frontend.py         # 一键启动脚本
 ├── start_server.py           # 后端启动脚本
 ├── install_ocr_deps.py       # OCR依赖安装脚本
 ├── requirements.txt          # 依赖包列表
 ├── test_rag.py              # 基础功能测试
 ├── test_upload.py            # 文件上传测试
+├── test_db_management.py     # 数据库管理测试
 ├── test.py                  # 完整系统测试
 ├── test_main.http           # HTTP测试文件
 ├── env_example.txt          # 环境变量示例
+├── .env.example             # 环境变量模板
+├── .gitignore               # Git忽略文件
 ├── README.md                # 项目说明
+├── DB_MANAGEMENT_README.md  # 数据库管理说明
 ├── FRONTEND_README.md       # 前端使用说明
 ├── OCR_UPDATE_README.md     # OCR功能说明
 ├── UPLOAD_FIX_README.md     # 上传功能修复说明
+├── vector_store/            # 向量数据库存储
+├── backups/                 # 数据库备份存储
 └── sample_documents/        # 示例文档
     ├── sample1.txt
     ├── sample2.txt

@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 import os
 from rag_system import RAGSystem
+from database_manager import DatabaseManager
 
 app = FastAPI(title="RAG系统API", description="基于检索增强生成的问答系统", version="1.0.0")
 
@@ -16,8 +17,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 初始化RAG系统
+# 初始化RAG系统和数据库管理器
 rag_system = RAGSystem()
+db_manager = DatabaseManager()
 
 # 请求模型
 class QueryRequest(BaseModel):
@@ -33,6 +35,15 @@ class AnalysisRequest(BaseModel):
 
 class DocumentUploadRequest(BaseModel):
     file_paths: List[str]
+
+class BackupRequest(BaseModel):
+    name: Optional[str] = None
+
+class RestoreRequest(BaseModel):
+    backup_name: str
+
+class CleanupRequest(BaseModel):
+    keep_count: int = 5
 
 # 根路径
 @app.get("/")
@@ -50,7 +61,14 @@ async def root():
             "info": "/info - 系统信息",
             "save": "/save - 保存系统",
             "load": "/load - 加载系统",
-            "clear": "/clear - 清空系统"
+            "clear": "/clear - 清空系统",
+            "db_backup": "/db/backup - 创建数据库备份",
+            "db_restore": "/db/restore - 恢复数据库",
+            "db_list": "/db/backups - 列出备份",
+            "db_delete": "/db/backup/{name} - 删除备份",
+            "db_stats": "/db/stats - 数据库统计",
+            "db_health": "/db/health - 数据库健康检查",
+            "db_cleanup": "/db/cleanup - 清理旧备份"
         }
     }
 
@@ -195,3 +213,78 @@ async def health_check():
         "system_initialized": rag_system.is_initialized,
         "document_count": rag_system.document_count
     }
+
+# ==================== 数据库管理接口 ====================
+
+# 创建数据库备份
+@app.post("/db/backup")
+async def create_backup(request: BackupRequest):
+    """创建数据库备份"""
+    try:
+        result = db_manager.create_backup(request.name)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 恢复数据库
+@app.post("/db/restore")
+async def restore_backup(request: RestoreRequest):
+    """从备份恢复数据库"""
+    try:
+        result = db_manager.restore_backup(request.backup_name)
+        # 如果恢复成功，重新加载RAG系统
+        if result["success"]:
+            rag_system.load_system()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 列出所有备份
+@app.get("/db/backups")
+async def list_backups():
+    """列出所有数据库备份"""
+    try:
+        result = db_manager.list_backups()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 删除备份
+@app.delete("/db/backup/{backup_name}")
+async def delete_backup(backup_name: str):
+    """删除指定的备份"""
+    try:
+        result = db_manager.delete_backup(backup_name)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 获取数据库统计信息
+@app.get("/db/stats")
+async def get_database_stats():
+    """获取数据库统计信息"""
+    try:
+        result = db_manager.get_database_stats()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 数据库健康检查
+@app.get("/db/health")
+async def database_health_check():
+    """数据库健康检查"""
+    try:
+        result = db_manager.get_database_health()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 清理旧备份
+@app.post("/db/cleanup")
+async def cleanup_backups(request: CleanupRequest):
+    """清理旧备份，只保留最新的几个"""
+    try:
+        result = db_manager.cleanup_old_backups(request.keep_count)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

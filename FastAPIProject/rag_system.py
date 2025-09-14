@@ -7,6 +7,7 @@ from document_processor import DocumentProcessor
 from vector_store import VectorStore
 from retriever import DocumentRetriever
 from generator import RAGGenerator
+from database_manager import DatabaseManager
 from langchain_community.embeddings import SentenceTransformerEmbeddings
 from langchain_huggingface import HuggingFaceEmbeddings
 class RAGSystem:
@@ -39,6 +40,7 @@ class RAGSystem:
         self.vector_store = VectorStore(dimension=384)  # all-MiniLM-L6-v2的维度
         self.retriever = DocumentRetriever(self.vector_store, self.embeddings)
         self.generator = RAGGenerator(llm_model)
+        self.db_manager = DatabaseManager(vector_store_path)
 
         # 系统状态
         self.is_initialized = False
@@ -68,6 +70,14 @@ class RAGSystem:
             # 更新状态
             self.document_count += len(processed_data['chunks'])
             self.is_initialized = True
+
+            # 更新数据库元数据
+            sources = [doc.metadata.get('source', 'unknown') for doc in processed_data['chunks']]
+            self.db_manager.update_document_metadata(
+                document_count=len(file_paths),
+                chunk_count=len(processed_data['chunks']),
+                sources=sources
+            )
 
             return {
                 "success": True,
